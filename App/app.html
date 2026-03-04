@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>牢大打字</title>
+  <link rel="icon" type="image/x-icon" href="./duck.ico" />
+  <style>
+    :root {
+      color-scheme: light;
+      --bg1: #fef3c7;
+      --bg2: #fde68a;
+      --bg3: #fcd34d;
+      --text: #374151;
+      --muted: #6b7280;
+      --accent: #f97316;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3));
+      font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+    }
+    .side-visual-root {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+    .side-visual {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      width: calc((100vw - 1160px) / 2);
+      min-width: 0;
+      overflow: hidden;
+      opacity: 0.36;
+      display: none;
+    }
+    .side-visual.show { display: block; }
+    .side-visual.left { left: 0; }
+    .side-visual.right { right: 0; }
+    .side-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: saturate(1.05) contrast(1.02);
+      transform: scale(1.02);
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 16px; position: relative; z-index: 1; }
+    .panel {
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+      margin-bottom: 12px;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+    .left { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    h1 { margin: 0; color: #c2410c; font-size: 28px; }
+    .sub { margin: 4px 0 0; color: #ea580c; font-size: 13px; font-weight: 700; }
+    .btn {
+      border: 1px solid #fdba74;
+      background: #fff;
+      color: #9a3412;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn:hover { background: #fff7ed; }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn.active { background: #fb923c; color: #fff; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+    .stats b { font-size: 32px; display: block; }
+    .stats span { color: var(--muted); font-size: 12px; }
+    .sentence {
+      text-align: center;
+      font-weight: 800;
+      font-size: 28px;
+      background: #fff7ed;
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 10px;
+      word-break: break-word;
+    }
+    .cards { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .card {
+      min-width: 95px;
+      border-radius: 12px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      text-align: center;
+      padding: 8px;
+    }
+    .card.sentence-mode { min-width: 72px; }
+    .card.english-mode { min-width: 120px; max-width: 220px; }
+    .card.current { background: #ffedd5; border-color: #fdba74; }
+    .card.ok { background: #dcfce7; border-color: #86efac; }
+    .card.err { background: #fee2e2; border-color: #fca5a5; }
+    .py { font-size: 13px; font-weight: 700; min-height: 18px; word-break: break-all; }
+    .zi { font-size: 34px; font-weight: 900; line-height: 1.1; margin-top: 3px; word-break: break-word; }
+    .done { min-height: 18px; margin-top: 2px; font-weight: 900; }
+    .kbd { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+    .kbd-row { display: flex; gap: 4px; }
+    .key {
+      width: 36px; height: 36px; border-radius: 8px; background: #fff; color: #6b7280;
+      border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; font-weight: 800;
+    }
+    .key.on { background: #fb923c; color: #fff; border-color: #fb923c; transform: scale(1.08); }
+    .space { width: 280px; }
+    #records { max-height: 280px; overflow: auto; }
+    .record { padding: 8px; border-radius: 10px; background: #fff7ed; margin: 6px 0; font-size: 13px; }
+    .grid-audio { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 8px; align-items: center; margin-top: 8px; }
+    .grid-audio select, .grid-audio input[type="file"] {
+      width: 100%;
+      border: 1px solid #fdba74;
+      border-radius: 8px;
+      padding: 6px;
+      background: #fff;
+      color: #7c2d12;
+    }
+    .tiny { font-size: 12px; color: #7c2d12; }
+    #boot-error {
+      display: none;
+      margin: 16px auto;
+      max-width: 760px;
+      border-radius: 12px;
+      border: 1px solid #fca5a5;
+      background: #fff1f2;
+      color: #9f1239;
+      padding: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    @media (max-width: 780px) {
+      .stats b { font-size: 26px; }
+      .zi { font-size: 28px; }
+      .space { width: 220px; }
+      .grid-audio { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 1260px) {
+      .side-visual { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="side-visual-root" class="side-visual-root" aria-hidden="true">
+    <div id="side-visual-left" class="side-visual left"><img id="side-visual-left-img" alt="" /></div>
+    <div id="side-visual-right" class="side-visual right"><img id="side-visual-right-img" alt="" /></div>
+  </div>
+  <div class="wrap">
+    <div id="boot-error"></div>
+    <div id="app"></div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      function fail(message, detail) {
+        var box = document.getElementById("boot-error");
+        if (!box) return;
+        box.style.display = "block";
+        box.textContent = "页面启动失败（已拦截白屏）\n" + message + (detail ? "\n\n" + detail : "");
+      }
+
+      window.addEventListener("error", function (e) {
+        fail("发生运行错误。", (e && e.message ? e.message : "") + "\n" + (e && e.filename ? (e.filename + ":" + e.lineno) : ""));
+      });
+
+      try {
+        var STORAGE_KEY = "duckType.records.v2";
+        var AUDIO_PROFILE_KEY = "duckType.audio.profile.v2";
+        var AUDIO_LIBRARY_KEY = "duckType.audio.library.v2";
+
+        var MODE_CHAR = "char";
+        var MODE_SENTENCE = "sentence";
+        var MODE_EN = "en";
+
+        var AUDIO_THEME_LAODA = "laoda";
+        var AUDIO_THEME_KUNKUN = "kunkun";
+        var AUDIO_THEME_CUSTOM = "custom";
+
+        var ROLE_BGM = "bgm";
+        var ROLE_OK = "ok";
+        var ROLE_ERR = "err";
+
+        var MIN_COUNT = 15;
+        var MAX_COUNT = 20;
+        var TARGET_CN_TOKENS = 50000;
+        var TARGET_CN_SENTENCES = 5000;
+        var TARGET_EN_WORDS = 50000;
+
+        var LAODA_AUDIO = {
+          bgm: "./牢大音频/牢大专属BGM see you again1_爱给网_aigei_com.mp3",
+          ok: "./牢大音频/科比 man！_爱给网_aigei_com.mp3",
+          err: "./牢大音频/【大汉不失望02】Big_Man_No_Disappoint_爱给网_aigei_com.wav"
+        };
+
+        var KUNKUN_AUDIO = {
+          bgm: "./坤坤音频/SWIN - 只因你太美.mp3",
+          ok: "./坤坤音频/哇真的是你呀坤坤_耳聆网_[声音ID：39644].mp3",
+          err: "./坤坤音频/蔡徐坤：你干嘛~哎呦_爱给网_aigei_com.mp3"
+        };
+
+        var LAODA_IMAGES = [
+          "./牢大音频/牢大.webp",
+          "./牢大音频/牢大2.jpg",
+          "./牢大音频/牢大3.webp",
+          "./牢大音频/牢大4.jpg"
+        ];
+
+        var KUNKUN_IMAGES = [
+          "./坤坤音频/9afcabce71d9215bf6a7b922567b60af6538ae6f6964-s56Z6e_fw658.webp",
+          "./坤坤音频/坤坤1.webp",
+          "./坤坤音频/坤坤2.webp",
+          "./坤坤音频/坤坤3.jpg"
+        ];
+
+        var RAW_WORD_BANK = [
+          ["暖", "nuan"], ["阳", "yang"], ["打", "da"], ["字", "zi"], ["开", "kai"], ["心", "xin"],
+          ["每", "mei"], ["一", "yi"], ["天", "tian"], ["小", "xiao"], ["鸭", "ya"], ["子", "zi"],
+          ["快", "kuai"], ["好", "hao"], ["改", "gai"], ["变", "bian"], ["世", "shi"], ["界", "jie"],
+          ["文", "wen"], ["人", "ren"], ["成", "cheng"], ["长", "zhang"], ["记", "ji"], ["下", "xia"],
+          ["键", "jian"], ["盘", "pan"], ["真", "zhen"], ["可", "ke"], ["爱", "ai"], ["让", "rang"],
+          ["飞", "fei"], ["舞", "wu"], ["思", "si"], ["维", "wei"], ["放", "fang"], ["指", "zhi"],
+          ["尖", "jian"], ["练", "lian"], ["习", "xi"], ["更", "geng"], ["进", "jin"], ["步", "bu"],
+          ["保", "bao"], ["持", "chi"], ["节", "jie"], ["奏", "zou"], ["准", "zhun"], ["学", "xue"],
+          ["向", "xiang"], ["上", "shang"], ["享", "xiang"], ["受", "shou"], ["沉", "chen"], ["浸", "jin"],
+          ["海", "hai"], ["洋", "yang"], ["生", "sheng"], ["活", "huo"], ["美", "mei"], ["瞬", "shun"],
+          ["间", "jian"], ["你", "ni"], ["我", "wo"], ["他", "ta"], ["们", "men"], ["这", "zhe"],
+          ["那", "na"], ["有", "you"], ["很", "hen"], ["会", "hui"], ["能", "neng"], ["看", "kan"],
+          ["去", "qu"], ["说", "shuo"], ["想", "xiang"], ["知", "zhi"], ["道", "dao"], ["时", "shi"],
+          ["前", "qian"], ["后", "hou"], ["里", "li"], ["外", "wai"], ["左", "zuo"], ["右", "you"],
+          ["新", "xin"], ["老", "lao"], ["高", "gao"], ["低", "di"], ["红", "hong"], ["绿", "lv"],
+          ["蓝", "lan"], ["黄", "huang"], ["白", "bai"], ["黑", "hei"], ["春", "chun"], ["夏", "xia"],
+          ["秋", "qiu"], ["冬", "dong"], ["山", "shan"], ["水", "shui"], ["火", "huo"], ["风", "feng"],
+          ["雨", "yu"], ["雪", "xue"], ["云", "yun"], ["草", "cao"], ["树", "shu"], ["路", "lu"],
+          ["车", "che"], ["马", "ma"], ["牛", "niu"], ["羊", "yang"], ["猫", "mao"], ["鸟", "niao"],
+          ["鱼", "yu"], ["读", "du"], ["写", "xie"], ["听", "ting"], ["走", "zou"], ["跑", "pao"],
+          ["跳", "tiao"], ["坐", "zuo"], ["站", "zhan"], ["笑", "xiao"], ["忙", "mang"], ["闲", "xian"],
+          ["热", "re"], ["冷", "leng"], ["甜", "tian"], ["苦", "ku"], ["酸", "suan"], ["香", "xiang"],
+          ["近", "jin"], ["远", "yuan"], ["旧", "jiu"], ["慢", "man"], ["安", "an"], ["静", "jing"],
+          ["星", "xing"], ["光", "guang"], ["梦", "meng"], ["专", "zhuan"], ["今", "jin"], ["再", "zai"],
+          ["手", "shou"], ["拼", "pin"], ["提", "ti"], ["是", "shi"], ["期", "qi"], ["来", "lai"],
+          ["正", "zheng"], ["求", "qiu"], ["注", "zhu"], ["灵", "ling"], ["确", "que"], ["稳", "wen"],
+          ["组", "zu"], ["继", "ji"], ["续", "xu"], ["耐", "nai"], ["认", "ren"], ["训", "xun"],
+          ["证", "zheng"], ["越", "yue"], ["追", "zhui"], ["速", "su"], ["音", "yin"], ["顺", "shun"]
+        ];
+
+        var RAW_SENTENCES = [
+          "暖阳打字让学习更开心",
+          "每天练习打字进步很快",
+          "你我一起享受打字节奏",
+          "坚持练习就会越来越稳",
+          "打字速度和准确都很重要",
+          "今天继续保持专注和耐心",
+          "认真输入每个拼音和汉字",
+          "从慢到快一步一步提升",
+          "键盘节奏正在变得更顺手",
+          "持续练习会让反应更灵活",
+          "小目标是每天完成一组训练",
+          "先保证准确再追求速度",
+          "完成一组就离目标更近",
+          "每天坚持一点点就会进步",
+          "打字练习让思路更加清晰"
+        ];
+
+        var EN_CONNECTORS = ["and","but","so","because","when","while","although","since","however","therefore","meanwhile","then","afterwards","besides","instead"];
+
+        function byId(id) { return document.getElementById(id); }
+        function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+        function randChoice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+        function shuffle(arr) {
+          var out = arr.slice();
+          for (var i = out.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var t = out[i]; out[i] = out[j]; out[j] = t;
+          }
+          return out;
+        }
+        function uid() { return String(Date.now()) + "_" + String(Math.floor(Math.random() * 100000)); }
+
+        function sanitizeFileName(name) {
+          return String(name || "audio")
+            .replace(/[\\/:*?"<>|]/g, "_")
+            .replace(/\s+/g, " ")
+            .trim();
+        }
+
+        function escapeHtml(s) {
+          return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+        }
+
+        function loadJson(key, fallback) {
+          try {
+            var raw = localStorage.getItem(key);
+            if (!raw) return fallback;
+            var parsed = JSON.parse(raw);
+            return parsed == null ? fallback : parsed;
+          } catch (e) {
+            return fallback;
+          }
+        }
+
+        function saveJson(key, value) {
+          try {
+            localStorage.setItem(key, JSON.stringify(value));
+          } catch (e) {
+            state.note = "本地存储空间不足，部分上传音频可能未保存。";
+          }
+        }
+
+        function loadRecords() {
+          var rows = loadJson(STORAGE_KEY, []);
+          return Array.isArray(rows) ? rows : [];
+        }
+
+        function saveRecords(records) {
+          saveJson(STORAGE_KEY, records);
+        }
+
+        function loadAudioProfile() {
+          var profile = loadJson(AUDIO_PROFILE_KEY, {
+            theme: AUDIO_THEME_LAODA,
+            customSelected: { bgm: "", ok: "", err: "" }
+          });
+          if (!profile || typeof profile !== "object") {
+            return { theme: AUDIO_THEME_LAODA, customSelected: { bgm: "", ok: "", err: "" } };
+          }
+          if (!profile.customSelected) profile.customSelected = { bgm: "", ok: "", err: "" };
+          return profile;
+        }
+
+        function saveAudioProfile() {
+          saveJson(AUDIO_PROFILE_KEY, state.audioProfile);
+        }
+
+        function loadAudioLibrary() {
+          var lib = loadJson(AUDIO_LIBRARY_KEY, []);
+          return Array.isArray(lib) ? lib : [];
+        }
+
+        function saveAudioLibrary() {
+          saveJson(AUDIO_LIBRARY_KEY, state.customLibrary);
+        }
+
+        function sampleChineseSingleCharRound(count, chars, wordMap) {
+          var out = [];
+          for (var i = 0; i < count; i++) {
+            var one = chars[rand(0, chars.length - 1)];
+            out.push({ char: one, pinyin: wordMap[one], input: "", status: "pending" });
+          }
+          return out;
+        }
+
+        var CN_OPENERS_CANDIDATE = [
+          "今天", "每天", "现在", "这时", "练习时", "打字时", "这一轮", "刚开始", "继续练习", "准备输入",
+          "专注练习", "认真输入", "保持节奏", "保持耐心", "稳住节奏", "从慢到快", "循序渐进", "一组一组", "按下键盘", "进入状态"
+        ];
+        var CN_SUBJECTS_CANDIDATE = [
+          "你我", "我们", "他们", "每人", "人人", "学习的人", "打字的人", "练习的人", "专注的人", "坚持的人",
+          "输入的人", "键盘手", "新手", "老手", "同伴", "朋友", "同学", "练习者", "挑战者", "行动者"
+        ];
+        var CN_ACTION_A_CANDIDATE = [
+          "认真练习打字", "保持专注和耐心", "先求准确再求速度", "从慢到快一步一步提升", "持续练习让反应更灵活",
+          "完成一组就离目标更近", "键盘节奏正在变得更顺手", "打字练习让思路更加清晰", "每天坚持一点点就会进步", "输入拼音和文字",
+          "保持稳定输入节奏", "减少错误提高准确", "按住节奏再提速度", "先稳后快持续进步", "专注当前这一组",
+          "认真检查每次输入", "让手指更熟悉键盘", "让反应速度更稳定", "把握每个输入时机", "保持输入连续性"
+        ];
+        var CN_ACTION_B_CANDIDATE = [
+          "再把节奏稳住", "再把准确拉高", "再把速度提高", "让思路更清晰", "让手感更顺", "让状态更稳",
+          "把每步都做好", "把目标拆成小步", "把注意力放在当前", "把训练坚持到底", "让输入更流畅",
+          "让每次练习有收获", "让错误越来越少", "让连贯性更好", "让节奏越来越稳", "让速度越来越快",
+          "让专注保持更久", "让反应更加灵活", "让输出更加准确", "让训练更有效"
+        ];
+        var CN_ENDINGS_CANDIDATE = [
+          "状态很好", "进步很快", "越来越稳", "更有信心", "更有节奏", "效果明显", "手感更顺", "目标更近", "完成更稳", "体验更好"
+        ];
+
+        var EN_REAL_SUBJECTS = [
+          "I", "You", "We", "They", "He", "She", "The student", "The player", "The typist", "The teacher",
+          "My friend", "Our team", "The beginner", "The learner", "The coach", "The group", "A writer", "A reader", "The worker", "The trainer"
+        ];
+        var EN_REAL_VERBS = [
+          "practice", "review", "improve", "build", "keep", "develop", "train", "check", "learn", "use",
+          "follow", "finish", "adjust", "measure", "focus on", "repeat", "refine", "stabilize", "organize", "strengthen"
+        ];
+        var EN_REAL_OBJECTS = [
+          "typing skills", "word accuracy", "keyboard rhythm", "daily habits", "clear focus", "steady speed", "clean input", "practice goals", "sentence flow", "reaction time",
+          "muscle memory", "typing control", "error handling", "timing control", "finger movement", "learning progress", "training quality", "practice routine", "word recall", "typing confidence"
+        ];
+        var EN_REAL_ADVERBS = [
+          "carefully", "consistently", "daily", "smoothly", "patiently", "actively", "properly", "steadily", "quickly", "accurately",
+          "clearly", "calmly", "confidently", "systematically", "gradually", "reliably", "intentionally", "effectively", "precisely", "continuously"
+        ];
+        var EN_REAL_CONNECTORS = ["and", "because", "so", "while", "when", "therefore", "although", "if", "after", "before", "as", "since"];
+        var EN_REAL_REASONS = [
+          "this keeps errors low", "this makes progress visible", "this builds stable habits", "this improves focus", "this supports long practice",
+          "this keeps rhythm steady", "this raises confidence", "this improves control", "this reduces random mistakes", "this strengthens memory"
+        ];
+
+        function isKnownChineseText(text, wordMap) {
+          var pure = String(text || "").replace(/\s+/g, "");
+          if (!pure) return false;
+          for (var i = 0; i < pure.length; i++) {
+            if (!wordMap[pure[i]]) return false;
+          }
+          return true;
+        }
+
+        function filterKnownChinesePhrases(list, wordMap) {
+          var out = [];
+          for (var i = 0; i < list.length; i++) {
+            if (isKnownChineseText(list[i], wordMap)) out.push(list[i]);
+          }
+          return out;
+        }
+
+        function buildEnglishWordUniverse() {
+          var seen = Object.create(null);
+          var out = [];
+          function addWordsFromText(text) {
+            var arr = String(text).toLowerCase().split(/[^a-z']+/);
+            for (var i = 0; i < arr.length; i++) {
+              var w = arr[i];
+              if (!w || seen[w]) continue;
+              seen[w] = true;
+              out.push(w);
+            }
+          }
+          for (var i = 0; i < EN_REAL_SUBJECTS.length; i++) addWordsFromText(EN_REAL_SUBJECTS[i]);
+          for (var j = 0; j < EN_REAL_VERBS.length; j++) addWordsFromText(EN_REAL_VERBS[j]);
+          for (var k = 0; k < EN_REAL_OBJECTS.length; k++) addWordsFromText(EN_REAL_OBJECTS[k]);
+          for (var n = 0; n < EN_REAL_ADVERBS.length; n++) addWordsFromText(EN_REAL_ADVERBS[n]);
+          for (var m = 0; m < EN_REAL_CONNECTORS.length; m++) addWordsFromText(EN_REAL_CONNECTORS[m]);
+          return out;
+        }
+
+        function generateChineseSentenceByIndex(index, cnPack) {
+          if (index < RAW_SENTENCES.length && isKnownChineseText(RAW_SENTENCES[index], wordMap)) return RAW_SENTENCES[index];
+          var openers = cnPack.openers;
+          var subjects = cnPack.subjects;
+          var actionsA = cnPack.actionsA;
+          var actionsB = cnPack.actionsB;
+          var endings = cnPack.endings;
+
+          var o = openers[index % openers.length];
+          var s = subjects[Math.floor(index / openers.length) % subjects.length];
+          var a = actionsA[Math.floor(index / (openers.length * subjects.length)) % actionsA.length];
+          var b = actionsB[Math.floor(index / (openers.length * subjects.length * actionsA.length)) % actionsB.length];
+          var e = endings[Math.floor(index / (openers.length * subjects.length * actionsA.length * actionsB.length)) % endings.length];
+
+          var t = index % 3;
+          if (t === 0) return o + s + a + b + e;
+          if (t === 1) return o + s + a + "，" + b + "，" + e;
+          return o + s + a + "，" + e;
+        }
+
+        function generateEnglishSentenceByIndex(index) {
+          var s = EN_REAL_SUBJECTS[index % EN_REAL_SUBJECTS.length];
+          var v = EN_REAL_VERBS[Math.floor(index / EN_REAL_SUBJECTS.length) % EN_REAL_VERBS.length];
+          var o = EN_REAL_OBJECTS[Math.floor(index / (EN_REAL_SUBJECTS.length * EN_REAL_VERBS.length)) % EN_REAL_OBJECTS.length];
+          var a = EN_REAL_ADVERBS[Math.floor(index / (EN_REAL_SUBJECTS.length * EN_REAL_VERBS.length * EN_REAL_OBJECTS.length)) % EN_REAL_ADVERBS.length];
+          var c = EN_REAL_CONNECTORS[Math.floor(index / 11) % EN_REAL_CONNECTORS.length];
+          var r = EN_REAL_REASONS[Math.floor(index / 13) % EN_REAL_REASONS.length];
+          var v2 = EN_REAL_VERBS[Math.floor(index / 17) % EN_REAL_VERBS.length];
+          var o2 = EN_REAL_OBJECTS[Math.floor(index / 19) % EN_REAL_OBJECTS.length];
+
+          var t = index % 5;
+          if (t === 0) return s + " " + v + " " + o + " " + a + ".";
+          if (t === 1) return s + " " + v + " " + o + " " + c + " we " + v2 + " " + o2 + ".";
+          if (t === 2) return "When " + s.toLowerCase() + " " + v + " " + o + ", we " + v2 + " " + o2 + " " + a + ".";
+          if (t === 3) return s + " " + v + " " + o + " because " + r + ".";
+          return "After practice, " + s.toLowerCase() + " " + v + " " + o + " and " + v2 + " " + o2 + ".";
+        }
+
+        function generateEnglishParagraph(sentences) {
+          var sentenceCount = sentences || (5 + Math.floor(Math.random() * 8));
+          var out = [];
+          for (var i = 0; i < sentenceCount; i++) {
+            out.push(generateEnglishSentenceByIndex(rand(0, TARGET_EN_WORDS - 1)));
+          }
+          return out.join(" ");
+        }
+
+        function buildRoundFromSentence(sentence, wordMap) {
+          var pure = String(sentence || "").replace(/\s+/g, "");
+          if (!pure) return null;
+          var out = [];
+          for (var i = 0; i < pure.length; i++) {
+            var ch = pure[i];
+            if (!wordMap[ch]) return null;
+            out.push({ char: ch, pinyin: wordMap[ch], input: "", status: "pending" });
+          }
+          return out;
+        }
+
+        function buildRoundFromEnglishParagraph(paragraph) {
+          var words = String(paragraph || "").split(/\s+/).map(function (w) {
+            var raw = String(w || "");
+            var clean = raw.replace(/^[^a-zA-Z']+|[^a-zA-Z']+$/g, "").toLowerCase();
+            return { char: raw, pinyin: clean, input: "", status: "pending" };
+          }).filter(function (x) { return /^[a-z']+$/.test(x.pinyin); });
+          return words.length ? words : null;
+        }
+
+        var wordMap = Object.create(null);
+        for (var i = 0; i < RAW_WORD_BANK.length; i++) wordMap[RAW_WORD_BANK[i][0]] = RAW_WORD_BANK[i][1];
+        if (!wordMap["和"]) wordMap["和"] = "he";
+        if (!wordMap["应"]) wordMap["应"] = "ying";
+        if (!wordMap["汉"]) wordMap["汉"] = "han";
+        if (!wordMap["目"]) wordMap["目"] = "mu";
+        if (!wordMap["标"]) wordMap["标"] = "biao";
+        if (!wordMap["效"]) wordMap["效"] = "xiao";
+
+        var CN_SENTENCE_PACK = {
+          openers: filterKnownChinesePhrases(CN_OPENERS_CANDIDATE, wordMap),
+          subjects: filterKnownChinesePhrases(CN_SUBJECTS_CANDIDATE, wordMap),
+          actionsA: filterKnownChinesePhrases(CN_ACTION_A_CANDIDATE, wordMap),
+          actionsB: filterKnownChinesePhrases(CN_ACTION_B_CANDIDATE, wordMap),
+          endings: filterKnownChinesePhrases(CN_ENDINGS_CANDIDATE, wordMap)
+        };
+        if (!CN_SENTENCE_PACK.openers.length) CN_SENTENCE_PACK.openers = ["今天"];
+        if (!CN_SENTENCE_PACK.subjects.length) CN_SENTENCE_PACK.subjects = ["你我"];
+        if (!CN_SENTENCE_PACK.actionsA.length) CN_SENTENCE_PACK.actionsA = ["认真练习打字"];
+        if (!CN_SENTENCE_PACK.actionsB.length) CN_SENTENCE_PACK.actionsB = ["让节奏更顺"];
+        if (!CN_SENTENCE_PACK.endings.length) CN_SENTENCE_PACK.endings = ["进步很快"];
+
+        var CN_BASE_CHARS = Object.keys(wordMap);
+        var EN_WORD_UNIVERSE = buildEnglishWordUniverse();
+
+        var state = {
+          mode: MODE_CHAR,
+          sound: true,
+          input: "",
+          currentIndex: 0,
+          round: [],
+          sentenceText: "",
+          signature: "",
+          done: 0,
+          total: 0,
+          seconds: 0,
+          wpm: 0,
+          timer: null,
+          startedAt: 0,
+          finished: false,
+          finishRecord: null,
+          showRecords: false,
+          records: loadRecords(),
+          activeKey: "",
+          showAudioPanel: false,
+          note: "",
+          audioProfile: loadAudioProfile(),
+          customLibrary: loadAudioLibrary(),
+          audioOk: null,
+          audioErr: null,
+          audioBgm: null,
+          bgmStarted: false,
+          feedbackCount: 0,
+          recentSignatures: [],
+          sideImageTimer: null,
+          sideImageToken: 0,
+          sideImageList: [],
+          sideImageIndex: 0
+        };
+
+        function getImagePoolByTheme(theme) {
+          if (theme === AUDIO_THEME_LAODA) return LAODA_IMAGES.slice();
+          if (theme === AUDIO_THEME_KUNKUN) return KUNKUN_IMAGES.slice();
+          return [];
+        }
+
+        function setSideVisualVisible(visible) {
+          var left = byId("side-visual-left");
+          var right = byId("side-visual-right");
+          if (!left || !right) return;
+          if (visible) {
+            left.classList.add("show");
+            right.classList.add("show");
+          } else {
+            left.classList.remove("show");
+            right.classList.remove("show");
+          }
+        }
+
+        function stopSideImageTimer() {
+          if (state.sideImageTimer) {
+            clearInterval(state.sideImageTimer);
+            state.sideImageTimer = null;
+          }
+        }
+
+        function renderSideImages() {
+          var leftImg = byId("side-visual-left-img");
+          var rightImg = byId("side-visual-right-img");
+          var list = state.sideImageList || [];
+
+          if (!leftImg || !rightImg || !list.length) {
+            setSideVisualVisible(false);
+            return;
+          }
+
+          var idx = state.sideImageIndex % list.length;
+          if (idx < 0) idx = 0;
+          var rightIdx = (idx + 1) % list.length;
+
+          leftImg.src = list[idx];
+          rightImg.src = list[rightIdx];
+          setSideVisualVisible(true);
+        }
+
+        function validateImageList(list, done) {
+          var source = Array.isArray(list) ? list.slice() : [];
+          if (!source.length) {
+            done([]);
+            return;
+          }
+
+          var valid = [];
+          var pending = source.length;
+
+          function finishOne() {
+            pending -= 1;
+            if (pending <= 0) done(valid);
+          }
+
+          for (var i = 0; i < source.length; i++) {
+            (function (src) {
+              var img = new Image();
+              img.onload = function () {
+                valid.push(src);
+                finishOne();
+              };
+              img.onerror = function () {
+                state.feedbackCount += 1;
+                finishOne();
+              };
+              img.src = src;
+            })(source[i]);
+          }
+        }
+
+        function setupSideImagesByTheme(theme) {
+          stopSideImageTimer();
+          state.sideImageToken += 1;
+          var token = state.sideImageToken;
+          var pool = getImagePoolByTheme(theme);
+
+          if (!pool.length) {
+            state.sideImageList = [];
+            state.sideImageIndex = 0;
+            setSideVisualVisible(false);
+            return;
+          }
+
+          validateImageList(pool, function (validList) {
+            if (token !== state.sideImageToken) return;
+
+            state.sideImageList = validList;
+            state.sideImageIndex = 0;
+
+            if (!validList.length) {
+              state.note = "当前主题图片不可用，已自动隐藏侧边轮播。";
+              clearNoteLater();
+              setSideVisualVisible(false);
+              render();
+              return;
+            }
+
+            renderSideImages();
+
+            if (validList.length > 1) {
+              state.sideImageTimer = setInterval(function () {
+                state.sideImageIndex = (state.sideImageIndex + 1) % state.sideImageList.length;
+                renderSideImages();
+              }, 3800);
+            }
+          });
+        }
+
+        function hasRecentSignature(signature) {
+          var s = String(signature || "");
+          if (!s) return false;
+          for (var i = 0; i < state.recentSignatures.length; i++) {
+            if (state.recentSignatures[i] === s) return true;
+          }
+          return false;
+        }
+
+        function pushRecentSignature(signature) {
+          var s = String(signature || "");
+          if (!s) return;
+          state.recentSignatures.push(s);
+          if (state.recentSignatures.length > 40) {
+            state.recentSignatures = state.recentSignatures.slice(state.recentSignatures.length - 40);
+          }
+        }
+
+        function withNegativeFeedback(label, builder, validator, fallbackValue, maxTries) {
+          var tries = maxTries || 6;
+          var last = null;
+          for (var i = 0; i < tries; i++) {
+            var candidate = builder(i);
+            last = candidate;
+            if (validator(candidate)) return candidate;
+            state.feedbackCount += 1;
+          }
+          state.note = "已触发回退机制：" + label + " 自动回退到稳定数据。";
+          clearNoteLater();
+          return fallbackValue;
+        }
+
+        function clearNoteLater() {
+          if (!state.note) return;
+          setTimeout(function () {
+            state.note = "";
+            render();
+          }, 2400);
+        }
+
+        function getLibraryByRole(role) {
+          return state.customLibrary.filter(function (item) { return item.role === role; });
+        }
+
+        function findCustomAudio(id) {
+          for (var i = 0; i < state.customLibrary.length; i++) {
+            if (state.customLibrary[i].id === id) return state.customLibrary[i];
+          }
+          return null;
+        }
+
+        function buildAudioSrc(theme, role) {
+          if (theme === AUDIO_THEME_LAODA) return LAODA_AUDIO[role];
+          if (theme === AUDIO_THEME_KUNKUN) return KUNKUN_AUDIO[role];
+
+          var id = state.audioProfile.customSelected[role];
+          if (!id) return null;
+          var item = findCustomAudio(id);
+          if (!item) return null;
+          if (item.relativePath) return item.relativePath;
+          return item.dataUrl || null;
+        }
+
+        function createAudio(src, loop, volume) {
+          var audio = new Audio(src);
+          audio.preload = "auto";
+          audio.loop = !!loop;
+          audio.volume = volume;
+          return audio;
+        }
+
+        function setupAudioByTheme() {
+          if (state.audioBgm) {
+            try { state.audioBgm.pause(); } catch (e) {}
+          }
+
+          var bgmSrc = buildAudioSrc(state.audioProfile.theme, ROLE_BGM);
+          var okSrc = buildAudioSrc(state.audioProfile.theme, ROLE_OK);
+          var errSrc = buildAudioSrc(state.audioProfile.theme, ROLE_ERR);
+
+          state.audioBgm = bgmSrc ? createAudio(bgmSrc, true, 0.55) : null;
+          state.audioOk = okSrc ? createAudio(okSrc, false, 1) : null;
+          state.audioErr = errSrc ? createAudio(errSrc, false, 1) : null;
+          state.bgmStarted = false;
+          setupSideImagesByTheme(state.audioProfile.theme);
+        }
+
+        function readFileAsDataURL(file, onDone, onFail) {
+          try {
+            var reader = new FileReader();
+            reader.onload = function () { onDone(String(reader.result || "")); };
+            reader.onerror = function () { if (onFail) onFail(); };
+            reader.readAsDataURL(file);
+          } catch (e) {
+            if (onFail) onFail();
+          }
+        }
+
+        function addCustomAudio(role, file) {
+          if (!file) return;
+          var safeName = sanitizeFileName(file.name);
+
+          readFileAsDataURL(file, function (dataUrl) {
+            var item = {
+              id: uid(),
+              role: role,
+              name: safeName,
+              mime: file.type || "audio/mpeg",
+              size: file.size || 0,
+              createdAt: new Date().toISOString(),
+              relativePath: "",
+              dataUrl: dataUrl
+            };
+
+            state.customLibrary.unshift(item);
+            state.customLibrary = state.customLibrary.slice(0, 60);
+            state.audioProfile.customSelected[role] = item.id;
+            saveAudioLibrary();
+            saveAudioProfile();
+            state.audioProfile.theme = AUDIO_THEME_CUSTOM;
+            setupAudioByTheme();
+            ensureBgmPlaying();
+            state.note = "已保存 " + roleToLabel(role) + " 音频：" + safeName;
+            clearNoteLater();
+            render();
+          }, function () {
+            state.note = "上传失败，请重试。";
+            clearNoteLater();
+            render();
+          });
+        }
+
+        function roleToLabel(role) {
+          if (role === ROLE_BGM) return "背景音乐";
+          if (role === ROLE_OK) return "成功音效";
+          return "失败音效";
+        }
+
+        function ensureBgmPlaying() {
+          if (!state.sound) return;
+          if (!state.audioBgm) return;
+          try {
+            if (!state.bgmStarted || state.audioBgm.paused) {
+              var task = state.audioBgm.play();
+              if (task && typeof task.catch === "function") {
+                task.then(function () { state.bgmStarted = true; }).catch(function () {});
+              } else {
+                state.bgmStarted = true;
+              }
+            }
+          } catch (e) {}
+        }
+
+        function playSound(kind) {
+          if (!state.sound) return;
+          var audio = kind === "ok" ? state.audioOk : state.audioErr;
+          if (!audio) return;
+          try {
+            audio.pause();
+            audio.currentTime = 0;
+            var task = audio.play();
+            if (task && typeof task.catch === "function") task.catch(function () {});
+          } catch (e) {}
+        }
+
+        function newRound(mode) {
+          var useMode = mode || state.mode;
+          state.mode = useMode;
+          state.input = "";
+          state.currentIndex = 0;
+          state.seconds = 0;
+          state.wpm = 0;
+          state.startedAt = 0;
+          state.finished = false;
+          state.finishRecord = null;
+          clearInterval(state.timer);
+
+          if (useMode === MODE_CHAR) {
+            var count = rand(MIN_COUNT, MAX_COUNT);
+            state.round = sampleChineseSingleCharRound(count, CN_BASE_CHARS, wordMap);
+            state.sentenceText = "";
+            state.signature = state.round.map(function (x) { return x.char; }).join("");
+            pushRecentSignature(state.signature);
+          } else if (useMode === MODE_SENTENCE) {
+            var sentence = withNegativeFeedback(
+              "中文句子",
+              function () { return generateChineseSentenceByIndex(rand(0, TARGET_CN_SENTENCES - 1), CN_SENTENCE_PACK); },
+              function (s) {
+                var round = buildRoundFromSentence(s, wordMap);
+                return !!(round && round.length >= 8 && !hasRecentSignature(s));
+              },
+              RAW_SENTENCES[0] || "暖阳打字",
+              8
+            );
+            state.sentenceText = sentence;
+            state.signature = sentence;
+            state.round = buildRoundFromSentence(sentence, wordMap) || buildRoundFromSentence(RAW_SENTENCES[0] || "暖阳打字", wordMap) || sampleChineseSingleCharRound(10, CN_BASE_CHARS, wordMap);
+            pushRecentSignature(state.signature);
+          } else {
+            var paragraph = withNegativeFeedback(
+              "英文段落",
+              function () { return generateEnglishParagraph(5 + Math.floor(Math.random() * 8)); },
+              function (s) {
+                var r = buildRoundFromEnglishParagraph(s);
+                return !!(r && r.length >= 14 && !hasRecentSignature(s));
+              },
+              "We practice typing skills carefully and we improve keyboard rhythm daily.",
+              8
+            );
+            state.sentenceText = paragraph;
+            state.signature = paragraph;
+            state.round = buildRoundFromEnglishParagraph(paragraph) || buildRoundFromEnglishParagraph("We practice typing skills carefully and improve typing control daily.");
+            pushRecentSignature(state.signature);
+          }
+
+          state.total = state.round.length;
+          state.done = 0;
+          render();
+        }
+
+        function calcNow() {
+          if (!state.startedAt) return;
+          state.seconds = Math.max(1, Math.floor((Date.now() - state.startedAt) / 1000));
+          state.wpm = Math.round(state.done / (state.seconds / 60));
+        }
+
+        function finish() {
+          state.finished = true;
+          calcNow();
+          var rec = {
+            id: Date.now(),
+            at: new Date().toISOString(),
+            wpm: state.wpm,
+            seconds: state.seconds,
+            total: state.total,
+            mode: state.mode
+          };
+          state.finishRecord = rec;
+          state.records.unshift(rec);
+          state.records = state.records.slice(0, 80);
+          saveRecords(state.records);
+          clearInterval(state.timer);
+          render();
+          setTimeout(function () {
+            if (state.finished) newRound(state.mode);
+          }, 2500);
+        }
+
+        function checkCurrent() {
+          if (state.finished) return;
+          var cur = state.round[state.currentIndex];
+          if (!cur) return;
+
+          var input = state.input.trim().toLowerCase();
+          cur.input = input;
+
+          if (input === cur.pinyin) {
+            cur.status = "ok";
+            state.done += 1;
+            state.currentIndex += 1;
+            state.input = "";
+            playSound("ok");
+            if (state.currentIndex >= state.total) {
+              finish();
+              return;
+            }
+          } else {
+            cur.status = "err";
+            playSound("err");
+          }
+          calcNow();
+          render();
+        }
+
+        function startTimerIfNeed() {
+          if (state.startedAt) return;
+          state.startedAt = Date.now();
+          state.timer = setInterval(function () {
+            calcNow();
+            renderStatsOnly();
+          }, 400);
+        }
+
+        function onKeyDown(e) {
+          ensureBgmPlaying();
+          var key = String(e.key || "").toLowerCase();
+          state.activeKey = key;
+          if (key === "tab") return;
+
+          if (key === " ") {
+            e.preventDefault();
+            if (state.finished) return;
+            startTimerIfNeed();
+            checkCurrent();
+            return;
+          }
+
+          if (key === "backspace") {
+            e.preventDefault();
+            if (state.finished) return;
+            state.input = state.input.slice(0, -1);
+            var cur = state.round[state.currentIndex];
+            if (cur) {
+              cur.input = state.input;
+              cur.status = "pending";
+            }
+            render();
+            return;
+          }
+
+          if (!/^[a-z']$/.test(key) || state.finished) return;
+          e.preventDefault();
+          startTimerIfNeed();
+
+          var curCard = state.round[state.currentIndex];
+          var limit = curCard ? Math.max(curCard.pinyin.length + 4, 14) : 14;
+          state.input = (state.input + key).slice(0, limit);
+          if (curCard) {
+            curCard.input = state.input;
+            curCard.status = "pending";
+          }
+          render();
+        }
+
+        function onKeyUp() {
+          state.activeKey = "";
+          renderKeyboardOnly();
+        }
+
+        function renderStatsOnly() {
+          var a = byId("stat-wpm");
+          var b = byId("stat-progress");
+          var c = byId("stat-seconds");
+          if (a) a.textContent = String(state.wpm || 0);
+          if (b) b.textContent = state.done + "/" + state.total;
+          if (c) c.textContent = String(state.seconds || 0);
+        }
+
+        function renderKeyboardOnly() {
+          var keys = document.querySelectorAll("[data-key]");
+          for (var i = 0; i < keys.length; i++) {
+            var el = keys[i];
+            var code = el.getAttribute("data-key");
+            if (code === state.activeKey || (state.activeKey === " " && code === "space")) el.classList.add("on");
+            else el.classList.remove("on");
+          }
+        }
+
+        function bestRecord() {
+          if (!state.records.length) return null;
+          var best = state.records[0];
+          for (var i = 1; i < state.records.length; i++) if (state.records[i].wpm > best.wpm) best = state.records[i];
+          return best;
+        }
+
+        function formatMode(mode) {
+          if (mode === MODE_SENTENCE) return "句子";
+          if (mode === MODE_EN) return "英文";
+          return "汉字";
+        }
+
+        function getQualityText() {
+          return "负反馈次数：" + String(state.feedbackCount || 0);
+        }
+
+        function formatAudioTheme(theme) {
+          if (theme === AUDIO_THEME_KUNKUN) return "坤坤模式";
+          if (theme === AUDIO_THEME_CUSTOM) return "自定义模式";
+          return "牢大模式";
+        }
+
+        function renderAudioSelect(role) {
+          var lib = getLibraryByRole(role);
+          var selected = state.audioProfile.customSelected[role] || "";
+          var opts = '<option value="">请选择已上传音频</option>' + lib.map(function (item) {
+            var selectedText = item.id === selected ? " selected" : "";
+            return '<option value="' + escapeHtml(item.id) + '"' + selectedText + '>' + escapeHtml(item.name) + '</option>';
+          }).join("");
+          return '<select id="sel-' + role + '">' + opts + '</select>';
+        }
+
+        function renderAudioPanel() {
+          if (!state.showAudioPanel) return "";
+          return '' +
+            '<div class="panel">' +
+            '<div class="row"><b>音乐管理</b><div class="tiny">当前主题：' + formatAudioTheme(state.audioProfile.theme) + '</div></div>' +
+            '<div class="left" style="margin-top:8px">' +
+            '<button class="btn ' + (state.audioProfile.theme === AUDIO_THEME_LAODA ? "active" : "") + '" id="btn-theme-laoda">牢大模式</button>' +
+            '<button class="btn ' + (state.audioProfile.theme === AUDIO_THEME_KUNKUN ? "active" : "") + '" id="btn-theme-kunkun">坤坤模式</button>' +
+            '<button class="btn ' + (state.audioProfile.theme === AUDIO_THEME_CUSTOM ? "active" : "") + '" id="btn-theme-custom">自定义模式</button>' +
+            '</div>' +
+            '<div class="tiny" style="margin-top:8px">牢大/坤坤模式自动使用内置音频；自定义模式可上传与复用。</div>' +
+            '<div class="grid-audio">' +
+              '<b>背景音乐</b>' + renderAudioSelect(ROLE_BGM) + '<input id="upload-bgm" type="file" accept="audio/*" />' +
+              '<b>成功音效</b>' + renderAudioSelect(ROLE_OK) + '<input id="upload-ok" type="file" accept="audio/*" />' +
+              '<b>失败音效</b>' + renderAudioSelect(ROLE_ERR) + '<input id="upload-err" type="file" accept="audio/*" />' +
+            '</div>' +
+            '<div class="left" style="margin-top:8px">' +
+            '<button class="btn" id="btn-clear-note">清除提示</button>' +
+            '</div>' +
+            '<div class="tiny" style="margin-top:8px">上传后会保存在浏览器本地，可在下拉框反复复用。</div>' +
+            (state.note ? ('<div class="tiny" style="margin-top:8px;color:#c2410c;font-weight:700">' + escapeHtml(state.note) + '</div>') : '') +
+            '</div>';
+        }
+
+        function render() {
+          var app = byId("app");
+          if (!app) return;
+
+          var best = bestRecord();
+          var cards = state.round.map(function (item, idx) {
+            var cls = "card";
+            if (state.mode === MODE_SENTENCE) cls += " sentence-mode";
+            if (state.mode === MODE_EN) cls += " english-mode";
+            if (idx === state.currentIndex) cls += " current";
+            if (item.status === "ok") cls += " ok";
+            if (item.status === "err" && idx === state.currentIndex) cls += " err";
+            var shown = idx === state.currentIndex ? (state.input || item.input || item.pinyin) : (item.input || item.pinyin);
+            return '<div class="' + cls + '">' +
+              '<div class="py">' + escapeHtml(shown) + '</div>' +
+              '<div class="zi">' + escapeHtml(item.char) + '</div>' +
+              '<div class="done">' + (item.status === "ok" ? '<span style="color:#16a34a">✓</span>' : (item.status === "err" && idx === state.currentIndex ? '<span style="color:#dc2626">✗</span>' : '')) + '</div>' +
+              '</div>';
+          }).join("");
+
+          var rows = ["1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm"];
+          var keyboard = rows.map(function (row, r) {
+            var pad = r === 2 ? '<div style="width:14px"></div>' : (r === 3 ? '<div style="width:28px"></div>' : "");
+            return '<div class="kbd-row">' + pad + row.split("").map(function (ch) {
+              return '<div class="key" data-key="' + ch + '">' + ch.toUpperCase() + '</div>';
+            }).join("") + '</div>';
+          }).join("");
+
+          var recordsHtml = "";
+          if (state.showRecords) {
+            recordsHtml = '<div class="panel"><div class="row"><b>历史成绩（本机保存）</b><button class="btn" id="btn-hide-records">收起</button></div>' +
+              (best ? ('<div style="margin-top:8px;color:#c2410c;font-weight:700">最佳速度：' + best.wpm + ' WPM（' + best.seconds + ' 秒）</div>') : '') +
+              '<div id="records">' +
+              (state.records.length ? state.records.slice(0, 20).map(function (r) {
+                return '<div class="record"><b style="color:#c2410c">' + r.wpm + ' WPM</b> | ' + r.total + ' 字 | ' + r.seconds + ' 秒 | ' + formatMode(r.mode) + '模式 | ' + new Date(r.at).toLocaleString() + '</div>';
+              }).join("") : '<div style="padding:8px;color:#6b7280">暂无成绩，完成一局后自动保存。</div>') +
+              '</div></div>';
+          }
+
+          var finishedHtml = "";
+          if (state.finished && state.finishRecord) {
+            finishedHtml = '<div class="panel" style="text-align:center;background:#fff7ed"><div style="font-size:28px;font-weight:900;color:#ea580c">🎉 练习完成</div>' +
+              '<div style="margin-top:8px;font-size:18px;font-weight:700">成绩：' + state.finishRecord.wpm + ' WPM，' + state.finishRecord.total + ' 字，用时 ' + state.finishRecord.seconds + ' 秒</div>' +
+              '<div style="margin-top:6px;color:#9a3412">2.5 秒后自动开始下一组</div>' +
+              '<button class="btn primary" id="btn-next-now" style="margin-top:10px">立即换一组</button></div>';
+          }
+
+          app.innerHTML = '' +
+            '<div class="panel"><div class="row"><div><h1>牢大打字</h1><div class="sub">输入后按空格确认（英文模式按完整单词+空格判定）</div></div>' +
+            '<div class="left">' +
+              '<button class="btn ' + (state.mode === MODE_CHAR ? 'active' : '') + '" id="btn-char">汉字模式</button>' +
+              '<button class="btn ' + (state.mode === MODE_SENTENCE ? 'active' : '') + '" id="btn-sentence">句子模式</button>' +
+              '<button class="btn ' + (state.mode === MODE_EN ? 'active' : '') + '" id="btn-english">英文模式</button>' +
+              '<button class="btn" id="btn-audio-panel">音乐管理</button>' +
+              '<button class="btn" id="btn-sound">' + (state.sound ? '🔊 声音开' : '🔇 静音') + '</button>' +
+              '<button class="btn" id="btn-records">成绩</button>' +
+              '<button class="btn primary" id="btn-refresh">换一组</button>' +
+            '</div></div></div>' +
+            '<div class="panel tiny" style="margin-top:-4px">' + getQualityText() + '</div>' +
+            renderAudioPanel() +
+            recordsHtml +
+            '<div class="panel"><div class="stats"><div><span>速度</span><b id="stat-wpm">' + (state.wpm || 0) + '</b><span>WPM</span></div><div><span>进度</span><b id="stat-progress">' + state.done + '/' + state.total + '</b><span>已输入</span></div><div><span>耗时</span><b id="stat-seconds">' + (state.seconds || 0) + '</b><span>秒</span></div></div></div>' +
+            '<div class="panel">' + ((state.mode === MODE_SENTENCE || state.mode === MODE_EN) ? ('<div class="sentence">' + escapeHtml(state.sentenceText) + '</div>') : '') + '<div class="cards">' + cards + '</div></div>' +
+            finishedHtml +
+            '<div class="panel"><div class="kbd">' + keyboard + '<div class="key space" data-key="space">空格确认</div></div></div>';
+
+          bindButtons();
+          renderKeyboardOnly();
+        }
+
+        function bindUpload(inputId, role) {
+          var input = byId(inputId);
+          if (!input) return;
+          input.onchange = function (e) {
+            var file = e && e.target && e.target.files ? e.target.files[0] : null;
+            addCustomAudio(role, file);
+            input.value = "";
+          };
+        }
+
+        function bindSelect(selectId, role) {
+          var el = byId(selectId);
+          if (!el) return;
+          el.onchange = function () {
+            state.audioProfile.customSelected[role] = String(el.value || "");
+            saveAudioProfile();
+            if (state.audioProfile.theme === AUDIO_THEME_CUSTOM) {
+              setupAudioByTheme();
+              ensureBgmPlaying();
+            }
+            render();
+          };
+        }
+
+        function bindButtons() {
+          var btnChar = byId("btn-char");
+          if (btnChar) btnChar.onclick = function () { newRound(MODE_CHAR); };
+
+          var btnSentence = byId("btn-sentence");
+          if (btnSentence) btnSentence.onclick = function () { newRound(MODE_SENTENCE); };
+
+          var btnEnglish = byId("btn-english");
+          if (btnEnglish) btnEnglish.onclick = function () { newRound(MODE_EN); };
+
+          var btnAudioPanel = byId("btn-audio-panel");
+          if (btnAudioPanel) btnAudioPanel.onclick = function () {
+            state.showAudioPanel = !state.showAudioPanel;
+            render();
+          };
+
+          var btnThemeLaoda = byId("btn-theme-laoda");
+          if (btnThemeLaoda) btnThemeLaoda.onclick = function () {
+            state.audioProfile.theme = AUDIO_THEME_LAODA;
+            saveAudioProfile();
+            setupAudioByTheme();
+            ensureBgmPlaying();
+            render();
+          };
+
+          var btnThemeKunkun = byId("btn-theme-kunkun");
+          if (btnThemeKunkun) btnThemeKunkun.onclick = function () {
+            state.audioProfile.theme = AUDIO_THEME_KUNKUN;
+            saveAudioProfile();
+            setupAudioByTheme();
+            ensureBgmPlaying();
+            render();
+          };
+
+          var btnThemeCustom = byId("btn-theme-custom");
+          if (btnThemeCustom) btnThemeCustom.onclick = function () {
+            state.audioProfile.theme = AUDIO_THEME_CUSTOM;
+            saveAudioProfile();
+            setupAudioByTheme();
+            ensureBgmPlaying();
+            render();
+          };
+
+          var btnClearNote = byId("btn-clear-note");
+          if (btnClearNote) btnClearNote.onclick = function () {
+            state.note = "";
+            render();
+          };
+
+          bindSelect("sel-bgm", ROLE_BGM);
+          bindSelect("sel-ok", ROLE_OK);
+          bindSelect("sel-err", ROLE_ERR);
+          bindUpload("upload-bgm", ROLE_BGM);
+          bindUpload("upload-ok", ROLE_OK);
+          bindUpload("upload-err", ROLE_ERR);
+
+          var btnSound = byId("btn-sound");
+          if (btnSound) btnSound.onclick = function () {
+            state.sound = !state.sound;
+            if (state.sound) ensureBgmPlaying();
+            else if (state.audioBgm) {
+              try { state.audioBgm.pause(); } catch (e) {}
+            }
+            render();
+          };
+
+          var btnRecords = byId("btn-records");
+          if (btnRecords) btnRecords.onclick = function () { state.showRecords = !state.showRecords; render(); };
+
+          var btnHideRecords = byId("btn-hide-records");
+          if (btnHideRecords) btnHideRecords.onclick = function () { state.showRecords = false; render(); };
+
+          var btnRefresh = byId("btn-refresh");
+          if (btnRefresh) btnRefresh.onclick = function () { newRound(state.mode); };
+
+          var btnNextNow = byId("btn-next-now");
+          if (btnNextNow) btnNextNow.onclick = function () { newRound(state.mode); };
+        }
+
+        setupAudioByTheme();
+        window.addEventListener("keydown", onKeyDown, { passive: false });
+        window.addEventListener("keyup", onKeyUp);
+        window.addEventListener("pointerdown", ensureBgmPlaying);
+
+        newRound(MODE_CHAR);
+      } catch (e) {
+        fail("初始化失败。", e && e.stack ? e.stack : String(e));
+      }
+    })();
+  </script>
+</body>
+</html>
